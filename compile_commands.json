@@ -1,0 +1,54 @@
+[
+  {
+    "arguments": [
+      "/usr/lib64/ccache/g++",
+      "-Isrc",
+      "-c",
+      "-o",
+      "main.o",
+      "main.cpp"
+    ],
+    "directory": "/home/nathan/Documents/robot_emulator/src",
+    "file": "/home/nathan/Documents/robot_emulator/src/main.cpp",
+    "output": "/home/nathan/Documents/robot_emulator/src/main.o"
+  },
+  {
+    "arguments": [
+      "/usr/lib64/ccache/g++",
+      "-Isrc",
+      "-c",
+      "-o",
+      "robot_emulator.o",
+      "robot_emulator.cpp"
+    ],
+    "directory": "/home/nathan/Documents/robot_emulator/src",
+    "file": "/home/nathan/Documents/robot_emulator/src/robot_emulator.cpp",
+    "output": "/home/nathan/Documents/robot_emulator/src/robot_emulator.o"
+  },
+  {
+    "arguments": [
+      "/usr/lib64/ccache/g++",
+      "-Isrc",
+      "-c",
+      "-o",
+      "robot.o",
+      "robot.cpp"
+    ],
+    "directory": "/home/nathan/Documents/robot_emulator/src",
+    "file": "/home/nathan/Documents/robot_emulator/src/robot.cpp",
+    "output": "/home/nathan/Documents/robot_emulator/src/robot.o"
+  },
+  {
+    "arguments": [
+      "/usr/lib64/ccache/g++",
+      "-Isrc",
+      "-c",
+      "-o",
+      "example_robot.o",
+      "example_robot.cpp"
+    ],
+    "directory": "/home/nathan/Documents/robot_emulator/src",
+    "file": "/home/nathan/Documents/robot_emulator/src/example_robot.cpp",
+    "output": "/home/nathan/Documents/robot_emulator/src/example_robot.o"
+  }
+]
