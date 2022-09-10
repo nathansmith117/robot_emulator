@@ -25,30 +25,25 @@ void ExampleRobot::setup(RobotEmulator * robot_emulator) {
 	// Settings.
 	settings.speed = 8.0;
 	settings.turn_power = 0.7;
+	settings.mass = 100.0;
 
 	// Setup rigid body.
 	rp3d::Vector3 sposition(0.0, 0.0, 0.0); 
 	rp3d::Quaternion orientation = rp3d::Quaternion::identity(); 
 	rp3d::Transform transform(sposition, orientation); 
 
-	rig_body = robot_emulator->physics_world->createRigidBody(transform);
-	rig_body->setType(rp3d::BodyType::DYNAMIC);
-	rig_body->enableGravity(false);
-	rig_body->setMass(100.0);
+	robot_body->enableGravity(false);
+	robot_body->setMass(settings.mass);
 
-	robot_shape = robot_emulator->physics_common.createBoxShape(rp3d::Vector3(size.x / 2, size.y / 2, size.z / 2));
+	rp3d::BoxShape * robot_shape = robot_emulator->physics_common.createBoxShape(rp3d::Vector3(size.x / 2, size.y / 2, size.z / 2));
 
-	rig_body->addCollider(robot_shape, transform);
-	rig_body->updateMassPropertiesFromColliders();
+	robot_body->addCollider(robot_shape, transform);
+	robot_body->updateMassPropertiesFromColliders();
 
-	force = rp3d::Vector3(0.0, 0.0, 0.0);
-	point_of_force = rp3d::Vector3(size.x, 0.0, size.z);
+	robot_body->setLinearDamping(2.0);
+	robot_body->setAngularDamping(7.0);
 
-	force2 = rp3d::Vector3(0.0, 0.0, 0.0);
-	point_of_force2 = rp3d::Vector3(-size.x, 0.0, -size.z);
-
-	rig_body->setLinearDamping(2.0);
-	rig_body->setAngularDamping(10.0);
+	reset_force_data();
 }
 
 void ExampleRobot::update() {
@@ -57,59 +52,25 @@ void ExampleRobot::update() {
 	const float speed = GetGamepadAxisMovement(0, GAMEPAD_AXIS_LEFT_Y) * settings.speed;
 	const float turn_power = GetGamepadAxisMovement(0, GAMEPAD_AXIS_LEFT_X) * settings.turn_power;
 
-	force.x = -speed - turn_power;
-	force2.x = -speed + turn_power;
+	right_force.x = -speed - turn_power;
+	left_force.x = -speed + turn_power;
 	
 	// Event handling.
 	if (IsKeyDown(KEY_W)) { // Forward.
-		force.x = settings.speed;
-		force2.x = settings.speed;
+		right_force.x = settings.speed;
+		left_force.x = settings.speed;
 	} else if (IsKeyDown(KEY_S)) { // Backward.
-		force.x = -settings.speed;
-		force2.x = -settings.speed;
+		right_force.x = -settings.speed;
+		left_force.x = -settings.speed;
 	}
 
 	if (IsKeyDown(KEY_D)) { // Right.
-		force.x -= settings.turn_power;
-		force2.x += settings.turn_power;
+		right_force.x -= settings.turn_power;
+		left_force.x += settings.turn_power;
 	} if (IsKeyDown(KEY_A)) { // Left.
-		force.x += settings.turn_power;
-		force2.x -= settings.turn_power;
+		right_force.x += settings.turn_power;
+		left_force.x -= settings.turn_power;
 	}
-
-	rig_body->applyLocalForceAtLocalPosition(force, point_of_force);
-	rig_body->applyLocalForceAtLocalPosition(force2, point_of_force2);
-
-	// Stuff.
-	rp3d::Transform curr_transform = rig_body->getTransform();
-	rp3d::Transform inter_transform;
-
-	inter_transform = rp3d::Transform::interpolateTransforms(prev_transform, curr_transform, robot_emulator->time_factor);
-
-	rp3d::Vector3 transform_angle = inter_transform.getOrientation().getVectorV();
-	rp3d::Matrix3x3 transform_matrix = inter_transform.getOrientation().getMatrix();
-	rp3d::Quaternion q = inter_transform.getOrientation();
-	rp3d::Vector3 transform_position = inter_transform.getPosition();
-
-
-	rp3d::Vector3 the_angles = euler_angles(transform_matrix);
-	
-	angle.pitch = the_angles.y;
-	angle.yaw = the_angles.x;
-	angle.roll = the_angles.z;
-
-	angle.yaw *= RAD2DEG;
-	angle.pitch *= RAD2DEG;
-	angle.roll *= RAD2DEG;
-
-	angle = get_non_neg_angle(angle);
-	angle = wrap_angle_deg(angle);
-
-	position.x = transform_position.x;
-	position.y = transform_position.y;
-	position.z = transform_position.z;
-
-	prev_transform = curr_transform;
 
 	update_robot_body();
 
@@ -121,14 +82,53 @@ void ExampleRobot::update() {
 }
 
 void ExampleRobot::draw() {
-	int x, y;
+	int i, j;
+	float x, y, z;
+    Matrix rotation;
+
+	// Half size.
+	Vector3 hs = {size.x / 2, size.y / 2, size.z / 2};
+
+	// Corners in a rectangle.
+	Vector2 top_left = {-hs.x, -hs.y};
+	Vector2 top_right = {hs.x, -hs.y};
+	Vector2 bottom_right = {hs.x, hs.y};
+	Vector2 bottom_left = {-hs.x, hs.y};
+
+	robot_corners[0] = {top_left.x, top_left.y, hs.z};
+	robot_corners[1] = {top_right.x, top_right.y, hs.z};
+	robot_corners[2] = {bottom_right.x, bottom_right.y, hs.z};
+	robot_corners[3] = {bottom_left.x, bottom_left.y, hs.z};
+
+	// Create other side of robot body.
+	for (i = 4; i < ROBOT_BODY_SIZE; i++) {
+		robot_corners[i] = robot_corners[i - 4];
+		robot_corners[i].z = -hs.z;
+	}
+
+	rotation = angle.get_matrix();
+
+	// Move to position and rotate.
+	for (i = 0; i < ROBOT_BODY_SIZE; i++) {
+		x = robot_corners[i].x;
+		y = robot_corners[i].y;
+		z = robot_corners[i].z;
+
+		robot_corners[i].x = rotation.m0 * x + rotation.m1 * y + rotation.m2 * z;
+		robot_corners[i].y = rotation.m4 * x + rotation.m5 * y + rotation.m6 * z;
+		robot_corners[i].z = rotation.m8 * x + rotation.m9 * y + rotation.m10 * z;
+
+		robot_corners[i].x += position.x;
+		robot_corners[i].y += position.y;
+		robot_corners[i].z += position.z;
+	}
 
 	if (!should_draw)
 		return;
 	
-	for (y = 0; y < ROBOT_BODY_SIZE; y++)
-		for (x = 0; x < ROBOT_BODY_SIZE; x++)
-			DrawLine3D(robot_body[x], robot_body[y], BLACK);
+	for (i = 0; i < ROBOT_BODY_SIZE; i++)
+		for (j = 0; j < ROBOT_BODY_SIZE; j++)
+			DrawLine3D(robot_corners[i], robot_corners[j], BLACK);
 }
 
 void ExampleRobot::update_camera(CAMERA_CB_ARGS) {

@@ -1,10 +1,13 @@
 #pragma once
 
 #include "robot_emulator.h"
+#include <reactphysics3d/collision/Collider.h>
+#include <reactphysics3d/collision/shapes/CollisionShape.h>
 
 struct RobotSettings {
 	float speed;
 	float turn_power;
+	float mass;
 };
 
 #define NO_CAMERA -1
@@ -20,8 +23,10 @@ class Robot {
 
 		virtual void update_robot_body();
 
+		virtual void reset_force_data();
+
 		Vector3 get_position() { return position; }
-		void set_position(Vector3 position) { this->position = position; }
+		virtual void set_position(Vector3 position);
 
 		Vector3 get_size() { return size; }
 		void set_size(Vector3 size) { this->size = size; }
@@ -46,8 +51,6 @@ class Robot {
 
 		std::vector<CameraWithCb> get_camera_list() { return camera_list; }
 		void set_camera_list(std::vector<CameraWithCb> camera_list) { this->camera_list = camera_list; }
-
-		Vector3 * get_robot_body() { return robot_body; }
 	protected:
 		RobotEmulator * robot_emulator = NULL;
 		bool should_draw;
@@ -58,9 +61,15 @@ class Robot {
 		Vector3 size;
 		AngleData angle;
 
-		// The robot body is a cube.  This stores the corners.
-		Vector3 robot_body[ROBOT_BODY_SIZE];
-
 		int current_camera;
 		std::vector<CameraWithCb> camera_list;
+
+		rp3d::RigidBody * robot_body = NULL;
+		rp3d::Transform prev_transform;
+
+		rp3d::Vector3 right_force;
+		rp3d::Vector3 right_point_of_force;
+
+		rp3d::Vector3 left_force;
+		rp3d::Vector3 left_point_of_force;
 };	

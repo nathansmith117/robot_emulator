@@ -31,6 +31,19 @@
       "-Isrc",
       "-c",
       "-o",
+      "util.o",
+      "util.cpp"
+    ],
+    "directory": "/home/nathan/Documents/robot_emulator/src",
+    "file": "/home/nathan/Documents/robot_emulator/src/util.cpp",
+    "output": "/home/nathan/Documents/robot_emulator/src/util.o"
+  },
+  {
+    "arguments": [
+      "/usr/lib64/ccache/g++",
+      "-Isrc",
+      "-c",
+      "-o",
       "robot.o",
       "robot.cpp"
     ],

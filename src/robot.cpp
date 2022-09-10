@@ -10,9 +10,20 @@ Robot::Robot(RobotEmulator * robot_emulator) {
 
 	should_draw = true;
 	current_camera = NO_CAMERA;
+
+	// Create robot body.
+	rp3d::Vector3 start_position(0.0, 0.0, 0.0); 
+	rp3d::Quaternion orientation = rp3d::Quaternion::identity(); 
+	rp3d::Transform transform(start_position, orientation); 
+
+	robot_body = robot_emulator->physics_world->createRigidBody(transform);
+	robot_body->setType(rp3d::BodyType::DYNAMIC);
 }
 
 Robot::~Robot() {
+	// Destory robot body.
+	if (robot_body != NULL)
+		robot_emulator->physics_world->destroyRigidBody(robot_body);
 }
 
 void Robot::set_current_camera_id(int current_camera) {
@@ -39,44 +50,62 @@ Camera * Robot::get_current_camera() {
 }
 
 void Robot::update_robot_body() {
-	int i;
-	float x, y, z;
-    Matrix rotation;
+	// Apply force.
+	robot_body->applyLocalForceAtLocalPosition(right_force, right_point_of_force);
+	robot_body->applyLocalForceAtLocalPosition(left_force, left_point_of_force);
 
-	// Half size.
-	Vector3 hs = {size.x / 2, size.y / 2, size.z / 2};
+	// Get robot body transform.
+	rp3d::Transform curr_transform = robot_body->getTransform();
+	rp3d::Transform inter_transform;
 
-	// Corners in a rectangle.
-	Vector2 top_left = {-hs.x, -hs.y};
-	Vector2 top_right = {hs.x, -hs.y};
-	Vector2 bottom_right = {hs.x, hs.y};
-	Vector2 bottom_left = {-hs.x, hs.y};
+	inter_transform = rp3d::Transform::interpolateTransforms(prev_transform, curr_transform, robot_emulator->time_factor);
 
-	robot_body[0] = {top_left.x, top_left.y, hs.z};
-	robot_body[1] = {top_right.x, top_right.y, hs.z};
-	robot_body[2] = {bottom_right.x, bottom_right.y, hs.z};
-	robot_body[3] = {bottom_left.x, bottom_left.y, hs.z};
+	// Get angle.
+	rp3d::Matrix3x3 transform_matrix = inter_transform.getOrientation().getMatrix();
+	rp3d::Vector3 transform_position = inter_transform.getPosition();
 
-	// Create other side of robot body.
-	for (i = 4; i < ROBOT_BODY_SIZE; i++) {
-		robot_body[i] = robot_body[i - 4];
-		robot_body[i].z = -hs.z;
-	}
+	rp3d::Vector3 the_angles = euler_angles(transform_matrix);
+	
+	angle.pitch = the_angles.y * RAD2DEG;
+	angle.yaw = the_angles.x * RAD2DEG;
+	angle.roll = the_angles.z * RAD2DEG;
 
-	rotation = angle.get_matrix();
+	angle = get_non_neg_angle(angle);
+	angle = wrap_angle_deg(angle);
 
-	// Move to position and rotate.
-	for (i = 0; i < ROBOT_BODY_SIZE; i++) {
-		x = robot_body[i].x;
-		y = robot_body[i].y;
-		z = robot_body[i].z;
+	// Set position.
+	position.x = transform_position.x;
+	position.y = transform_position.y;
+	position.z = transform_position.z;
 
-		robot_body[i].x = rotation.m0 * x + rotation.m1 * y + rotation.m2 * z;
-		robot_body[i].y = rotation.m4 * x + rotation.m5 * y + rotation.m6 * z;
-		robot_body[i].z = rotation.m8 * x + rotation.m9 * y + rotation.m10 * z;
+	prev_transform = curr_transform;
+}
 
-		robot_body[i].x += position.x;
-		robot_body[i].y += position.y;
-		robot_body[i].z += position.z;
-	}
+void Robot::set_position(Vector3 position) {
+	this->position = position;
+
+	if (robot_body == NULL)
+		return;
+
+	// Get transform and position.
+	rp3d::Transform trans = robot_body->getTransform();
+	rp3d::Vector3 pos = trans.getPosition();
+
+	pos.x = position.x;
+	pos.y = position.y;
+	pos.z = position.z;
+
+	// Set transform and position.
+	trans.setPosition(pos);
+	robot_body->setTransform(trans);
+}
+
+void Robot::reset_force_data() {
+	// Right.
+	right_force = rp3d::Vector3(0.0, 0.0, 0.0);
+	right_point_of_force = rp3d::Vector3(size.x, 0.0, size.z);
+
+	// Left.
+	left_force = rp3d::Vector3(0.0, 0.0, 0.0);
+	left_point_of_force = rp3d::Vector3(-size.x, 0.0, -size.z);
 }

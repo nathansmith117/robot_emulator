@@ -21,6 +21,9 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
+// Other.
+#include "util.h"
+
 struct Settings {
 
 	// Window.
@@ -29,7 +32,7 @@ struct Settings {
 	bool start_fullscreen = false;
 
 	// Debug.
-	bool show_debug_into = false;
+	bool show_debug_info = false;
 
 	// Display.
 	float fov = 90.0;
@@ -48,12 +51,7 @@ struct AngleData {
 	}
 };
 
-bool closeEnough(const float& a, const float& b, const float& epsilon = std::numeric_limits<float>::epsilon());
-
-rp3d::Vector3 euler_angles(rp3d::Matrix3x3 R);
-
 #define CAMERA_CB_ARGS class RobotEmulator * robot_emulator, class Robot * robot, Camera * camera, void * d
-
 typedef void (*CAMERA_CB)(CAMERA_CB_ARGS);
 
 struct CameraWithCb {
@@ -77,10 +75,6 @@ struct CameraWithCb {
 		cb(robot_emulator, robot, &camera, data);
 	}
 };
-
-AngleData wrap_angle_deg(AngleData angle);
-AngleData get_non_neg_angle(AngleData angle);
-float make_angle_non_neg(float angle);
 
 class RobotEmulator {
 	public:

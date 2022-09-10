@@ -20,7 +20,6 @@ int main(int argc, char ** argv) {
 
 	robot_emulator->robot = new ExampleRobot(robot_emulator);
 	robot_emulator->physics_world->setIsDebugRenderingEnabled(true);
-
 	
 	while (!WindowShouldClose()) {
 		// Update.
